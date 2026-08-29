@@ -123,6 +123,18 @@ discounted; where it addresses data, it addresses sample integrity---survivorshi
 selection---rather than whether the daily series under analysis was assembled correctly from
 the positions that generated it.
 
+\textbf{Return misdating and smoothed risk statistics.} \citet{glm} show that reported
+returns on illiquid portfolios are a moving average of true returns, that this smoothing
+understates volatility and inflates the Sharpe ratio, and that positive serial correlation in
+reported returns is its signature; they supply a smoothing-adjusted Sharpe ratio as the
+correction. Their source is stale pricing on assets that do not trade. Class~1 below is the
+same bias arriving from a different door: the assets are perfectly liquid and continuously
+priced, and the smoothing is introduced by an \emph{accounting convention}. We show in
+\S\ref{sec:lump} that exit-day marking induces exactly the serial-correlation signature GLM
+identify, and induces it precisely where it inflates --- which makes their diagnostic and their
+correction directly applicable to a setting where nobody thinks to look for illiquidity,
+because there is none.
+
 \textbf{Leakage and reproducibility.} \citet{kn} document leakage as the dominant reproducibility
 failure in machine-learning-based science and propose model-info sheets; \citet{reforms}
 extends this to reporting standards. In finance specifically, recent work catalogues spurious
@@ -213,6 +225,18 @@ Under purely idiosyncratic P\&L, exit-day marking \emph{deflates} the Sharpe rat
 inflation appears only as positions come to share shocks, saturating near 2.1--2.2$\times$---
 which brackets what we measured in production, on a book whose positions share a volatility
 factor almost completely.
+
+\textbf{The mechanism is portfolio-level smoothing, and it leaves GLM's fingerprint.} At the
+level of a single trade, exit-day marking \emph{concentrates}: eleven days of P\&L collapse onto
+one. At the level of the portfolio it \emph{smooths}, because a shock common to many open
+positions is dispersed across their staggered exit dates. That is the same operation
+\citet{glm} model for illiquid holdings, and it leaves the same trace. In the simulation, the
+first-order autocorrelation of the exit-day series rises with commonality --- $+0.02$ at
+$\rho=0$, $+0.21$ at $\rho=0.5$, $+0.29$ at $\rho=1$ --- while the MTM-daily series shows none
+($-0.03$ at $\rho=1$); the induced autocorrelation tracks the inflation almost exactly.
+\textbf{This yields a free diagnostic}: unexplained positive serial correlation in a daily P\&L
+series built from liquid instruments is evidence of a marking convention, not of illiquidity,
+and GLM's smoothing-adjusted Sharpe is then the right correction to apply.
 
 \textbf{Why this matters beyond bookkeeping.} A developer testing a marking convention on
 synthetic i.i.d.\ P\&L will conclude the convention is harmless. The convention is harmless
@@ -407,6 +431,9 @@ capital market anomalies attenuated in the recent era of high liquidity and trad
 \emph{Journal of Accounting and Economics} 58(1).
 \bibitem[Frazzini et al.(2018)]{fim} Frazzini, A., Israel, R., Moskowitz, T. (2018). Trading
 costs. Working paper, AQR Capital Management.
+\bibitem[Getmansky et al.(2004)]{glm} Getmansky, M., Lo, A., Makarov, I. (2004). An
+econometric model of serial correlation and illiquidity in hedge fund returns. \emph{Journal of
+Financial Economics} 74(3).
 \bibitem[Harvey and Liu(2015)]{hl} Harvey, C., Liu, Y. (2015). Backtesting. \emph{Journal of
 Portfolio Management} 42(1).
 \bibitem[Harvey et al.(2016)]{harvey2016} Harvey, C., Liu, Y., Zhu, H. (2016). $\ldots$ and the
