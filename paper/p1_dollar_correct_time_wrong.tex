@@ -231,12 +231,27 @@ level of a single trade, exit-day marking \emph{concentrates}: eleven days of P\
 one. At the level of the portfolio it \emph{smooths}, because a shock common to many open
 positions is dispersed across their staggered exit dates. That is the same operation
 \citet{glm} model for illiquid holdings, and it leaves the same trace. In the simulation, the
-first-order autocorrelation of the exit-day series rises with commonality --- $+0.02$ at
-$\rho=0$, $+0.21$ at $\rho=0.5$, $+0.29$ at $\rho=1$ --- while the MTM-daily series shows none
-($-0.03$ at $\rho=1$); the induced autocorrelation tracks the inflation almost exactly.
-\textbf{This yields a free diagnostic}: unexplained positive serial correlation in a daily P\&L
-series built from liquid instruments is evidence of a marking convention, not of illiquidity,
-and GLM's smoothing-adjusted Sharpe is then the right correction to apply.
+first-order autocorrelation of the exit-day series rises monotonically with commonality ---
+$+0.02$ at $\rho=0$, $+0.21$ at $\rho=0.5$, $+0.29$ at $\rho=1$ --- tracking the inflation
+almost exactly. The MTM-daily series moves the other way, from $+0.16$ at $\rho=0$ to $-0.03$
+at $\rho=1$.
+
+\textbf{That second series is the important one, and it disciplines the diagnostic.} A
+\emph{correctly} marked daily series is not serially uncorrelated: with overlapping multi-day
+holds, consecutive days share open positions, and the resulting variation in inventory induces
+positive autocorrelation --- here $+0.16$ --- with no marking error whatsoever. So the naive
+reading, that positive serial correlation in a liquid-instrument P\&L series indicates a marking
+convention, is wrong: it would flag every correctly marked book with overlapping holds. What
+separates the two is the \emph{sign of the relationship with commonality}, not the level.
+Correct marking's autocorrelation is an overlap artifact that common shocks wash out, so it
+\emph{falls} as positions correlate; lumping's is manufactured by the convention itself, so it
+\emph{rises}. The usable test is therefore conditional: estimate the autocorrelation the
+position overlap alone implies, and treat only the excess --- and specifically excess that grows
+with cross-position correlation --- as evidence of a marking convention. Where that test fires,
+GLM's smoothing-adjusted Sharpe is the right correction to apply. We flag this as a diagnostic
+worth developing rather than a validated instrument: we have calibrated it on a simulation and
+one book, and its false-positive rate on a wider sample of correctly marked, overlapping-hold
+strategies is unmeasured.
 
 \textbf{Why this matters beyond bookkeeping.} A developer testing a marking convention on
 synthetic i.i.d.\ P\&L will conclude the convention is harmless. The convention is harmless
