@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opentape"
+dynamic = ["version"]
+description = "Runtime invariants for honest backtest accounting: twelve bug classes, twelve assertions, synthetic reproductions."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["backtesting", "quantitative-finance", "options", "accounting", "reproducibility"]
+dependencies = ["numpy>=1.22", "pandas>=1.5"]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/charlieyanhx/backtest-bug-taxonomy"
+Issues = "https://github.com/charlieyanhx/backtest-bug-taxonomy/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "opentape.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["opentape*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
