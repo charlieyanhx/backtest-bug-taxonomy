@@ -29,9 +29,9 @@ mechanism, the distortion it produced on live research, a
 runtime-checkable invariant that prevents it, and a fully synthetic reproduction shipped as a
 test. Two classes warrant emphasis. First, exit-day lumping---booking a multi-day trade's P\&L
 on its exit date---inflates the Sharpe ratio \emph{only} when concurrent positions share
-shocks: in simulation the exit-day-to-MTM Sharpe ratio rises monotonically from 0.64 (purely
-idiosyncratic P\&L, where lumping \emph{deflates}) to 2.14 (fully common shocks), bracketing
-the 2.1--2.4$\times$ inflation observed in production. This explains why the bug survives toy
+shocks: in simulation the exit-day-to-MTM Sharpe ratio climbs from 0.64 (purely
+idiosyncratic P\&L, where lumping \emph{deflates}) to a plateau of 2.1--2.2 once shocks are
+substantially shared, bracketing the 2.2--2.4$\times$ inflation observed in production. This explains why the bug survives toy
 testing and why it is worst precisely for the correlated, stress-exposed books where accuracy
 matters most. Second, \emph{attribution failure}---dollars, timing and coverage all correct
 while the P\&L originates in an exposure the strategy was not testing---survives every check in
@@ -87,7 +87,7 @@ i.i.d.\ daily P\&L, lumping does not inflate the Sharpe ratio at all---it deflat
 inflation requires that concurrent positions share shocks, because mark-to-market booking
 concentrates a common shock onto one catastrophic day while exit-day booking disperses it
 across the staggered exit dates of every trade that lived through it. Figure~\ref{fig:common}
-traces the inflation ratio from 0.64 to 2.14 as commonality rises. The practical implication
+traces the inflation ratio from 0.64 to its 2.1--2.2 plateau as commonality rises. The practical implication
 is uncomfortable: the bug is invisible in the low-correlation test cases a developer is likely
 to construct, and maximal in the correlated, stress-exposed books where the risk statistic
 actually matters.
@@ -183,7 +183,7 @@ a necessary check that is comprehensively insufficient.
 \footnotesize\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{clll}\toprule
 \# & Class & Measured distortion & Invariant \\ \midrule
-1 & Exit-day lumping & Sharpe $\times$2.1--2.4 (conditional; \S\ref{sec:lump}) & one mark per held day \\
+1 & Exit-day lumping & Sharpe $\times$2.2--2.4 (conditional; \S\ref{sec:lump}) & one mark per held day \\
 2 & Trajectory truncation & a ``12.6'' Sharpe, 100\% artifact & calendar-time exit location \\
 3 & Boundary drops & 24\% of trades, non-randomly & tape count $=$ entry-log count \\
 4 & Missing-leg deferral & 1.99 $\to$ 1.37; tail-day sign inverts & re-mark quote-less held days \\
@@ -207,7 +207,8 @@ position was held and moving show zero.
 
 \textbf{What it cost us.} A skew strategy quoted at 1.91 (exit-day basis, \textsc{invalid})
 re-marked to 0.81; a premium sleeve 4.16 $\to$ 1.72; an aggregate book 4.78 $\to$
-$\approx$2.2. Inflation of 2.1--2.4$\times$, with totals unchanged in every case.
+$\approx$2.2. Inflation of $2.36\times$, $2.42\times$ and $2.17\times$ respectively---a
+2.2--2.4$\times$ band---with totals unchanged in every case.
 
 \textbf{The conditional result.} We simulate 120 overlapping ten-day trades on a 252-day
 calendar, with each trade's daily P\&L a convex combination
@@ -357,7 +358,7 @@ always-long $-2.28$. The strategy's own structure, stripped of its signal, score
 better than the signal.
 \end{itemize}
 The signal's genuine discrimination was approximately \$4.9 per trade against a short-side
-premium of roughly \$24 per trade: real, and an order of magnitude too small to matter. No
+premium of roughly \$24 per trade: real, and roughly five-fold too small to matter. No
 accounting audit could have reached this conclusion, because no accounting was wrong.
 
 \textbf{Invariant (two-part).} (i) Decompose P\&L by leg and require the thesis leg to carry
@@ -422,7 +423,7 @@ than asserting a property.
 
 \section{Limitations}
 This is a single-program catalogue: one asset class, one friction regime, one team's failure
-modes. The magnitudes---2.1--2.4$\times$, 8$\times$, the simulated 0.64-to-2.14 curve---are
+modes. The magnitudes---2.2--2.4$\times$, 8$\times$, the simulated 0.64-to-2.2 curve---are
 illustrations of mechanism, not population estimates, and the simulation's saturation point
 depends on parameters we chose to resemble our book. The invariant set is necessary, not
 sufficient: we make no claim that twelve is the complete list, and we would expect a

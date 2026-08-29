@@ -49,7 +49,10 @@ ax.set_ylabel("exit-day Sharpe / MTM-daily Sharpe")
 ax.set_title("Exit-day lumping inflates only when positions share shocks", fontsize=9)
 ax.spines[["top","right"]].set_visible(False)
 fig.tight_layout(); fig.savefig("fig_p1_commonality.pdf")
-print("ratio at rho=0 (iid):", round(ratios[0], 3), " at rho=1 (common):", round(ratios[-1], 3))
+print("inflation ratio vs rho (the table in the paper; note the plateau, NOT monotone):")
+for r, v in zip(rhos, ratios):
+    print(f"  rho={r:.1f}  ratio={v:.3f}")
+print(f"  peak {max(ratios):.3f} at rho={rhos[int(np.argmax(ratios))]:.1f}; endpoint rho=1 is {ratios[-1]:.3f}")
 
 # Panel B result, part 2: the GLM fingerprint. Lag-1 autocorrelation of both series vs
 # commonality. The exit-day series' autocorr RISES with rho (manufactured by the convention);
