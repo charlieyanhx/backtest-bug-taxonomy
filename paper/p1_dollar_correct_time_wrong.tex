@@ -180,6 +180,7 @@ competent researchers who were reconciling their numbers. That is the point: rec
 a necessary check that is comprehensively insufficient.
 
 \begin{table}[t]\centering\small
+\footnotesize\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{clll}\toprule
 \# & Class & Measured distortion & Invariant \\ \midrule
 1 & Exit-day lumping & Sharpe $\times$2.1--2.4 (conditional; \S\ref{sec:lump}) & one mark per held day \\
@@ -398,6 +399,7 @@ the explicit caveat that it constrains the mean only---and that the tape, not th
 what decides.
 
 \section{The library}
+\begin{sloppypar}
 \texttt{opentape} ships each invariant as a callable and each class as a synthetic
 failing-then-passing test. Marking: \texttt{mtm\_daily\_marks} with
 \texttt{assert\_full\_coverage}. Accounting: \texttt{three\_lines},
@@ -407,6 +409,7 @@ failing-then-passing test. Marking: \texttt{mtm\_daily\_marks} with
 No market data is included or required; every exhibit in this paper is reproducible from the
 test suite. A tape that passes all twelve invariants is not thereby correct; a tape that fails
 any one is wrong or unproven.
+\end{sloppypar}
 
 \textbf{Suggested adoption order}, by cost-to-benefit in our experience: (1) full-calendar
 padding and the coverage assertion, which together retire classes 1, 4 and 6 for a few lines;
