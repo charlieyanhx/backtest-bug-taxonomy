@@ -18,10 +18,10 @@ Code, pre-registration documents and a data-availability statement: \url{https:/
 
 \begin{abstract}
 A backtest whose profit-and-loss reconciles to the cent can still be wrong by a factor of two
-to twelve in risk-adjusted terms---or can be measuring an exposure the strategy never claimed.
-The defect in such cases lies not in the dollars but in their \emph{timing}, their
-\emph{coverage}, the \emph{identity} of the instrument marked, or the \emph{attribution} of the
-P\&L to the hypothesis under test. The standard defenses---reconciliation audits, multiple-
+to eight in risk-adjusted terms---or can be measuring an exposure the strategy never claimed.
+The defect in such cases lies not in the arithmetic of the dollars but in their \emph{timing},
+their \emph{coverage}, the \emph{identity} of the instrument marked, the \emph{fills} assumed,
+or the \emph{attribution} of the P\&L to the hypothesis under test. The standard defenses---reconciliation audits, multiple-
 testing corrections, deflated Sharpe ratios, walk-forward protocols, leakage screens---do not
 detect these failures, because every one of them takes the daily P\&L series as given. We
 document twelve bug classes encountered in a single systematic options program, each with its
@@ -31,13 +31,16 @@ test. Two classes warrant emphasis. First, exit-day lumping---booking a multi-da
 on its exit date---inflates the Sharpe ratio \emph{only} when concurrent positions share
 shocks: in simulation the exit-day-to-MTM Sharpe ratio climbs from 0.64 (purely
 idiosyncratic P\&L, where lumping \emph{deflates}) to a plateau of 2.1--2.2 once shocks are
-substantially shared, bracketing the 2.2--2.4$\times$ inflation observed in production. This explains why the bug survives toy
+substantially shared---the same order of magnitude as, though slightly below, the
+2.17--2.42$\times$ inflation observed in production, whose books carry sizing dispersion,
+clustered entries and fat-tailed shocks the simulation omits. This explains why the bug survives toy
 testing and why it is worst precisely for the correlated, stress-exposed books where accuracy
 matters most. Second, \emph{attribution failure}---dollars, timing and coverage all correct
 while the P\&L originates in an exposure the strategy was not testing---survives every check in
 the other eleven classes; in our worked example a tape passing all of them earned its money
-from a risk premium and a hedge path, and a side-randomized control scored the constant-side
-benchmark at five times the signal's Sharpe. We propose per-leg attribution plus a
+from a risk premium and a hedge path: constant-side controls on the identical entries scored
+up to five times the signal's Sharpe---significantly better in paired form---while
+side-randomized controls scored below zero in every one of 100 re-randomizations. We propose per-leg attribution plus a
 side-randomized negative control as the minimum standard of evidence for any signal tape, and
 we release the invariants as running code so that adoption costs an import rather than a
 culture change.
@@ -60,7 +63,7 @@ series. It is those mechanics that concern us.
 
 This paper is about the prior question. In building and auditing tapes for a systematic
 options program---a documented research record spanning several months of intensive work over a
-five-and-a-half-year data sample---the most damaging errors we encountered were not
+5.7-year data sample---the most damaging errors we encountered were not
 statistical.
 They were accounting errors: the dollars were right---reconciliations passed, totals tied to
 the cent---but the dollars were placed on the wrong days, attributed to the wrong instrument,
@@ -82,8 +85,9 @@ discovery. Two of the twelve are different, and they are the paper's actual clai
 
 \textbf{Exit-day lumping is conditional, not universal} (\S\ref{sec:lump}). Booking each
 trade's P\&L on its exit date, rather than marking it daily, leaves totals unchanged and is
-widely known to distort risk statistics. What appears not to be known is \emph{when}: under
-i.i.d.\ daily P\&L, lumping does not inflate the Sharpe ratio at all---it deflates it. The
+widely known to distort risk statistics. What appears not to be known is \emph{when}: in our
+simulations, under i.i.d.\ daily P\&L, lumping does not inflate the Sharpe ratio---it deflates
+it (the magnitude of both effects is parameterization-dependent; \S\ref{sec:lump}). The
 inflation requires that concurrent positions share shocks, because mark-to-market booking
 concentrates a common shock onto one catastrophic day while exit-day booking disperses it
 across the staggered exit dates of every trade that lived through it. Figure~\ref{fig:common}
@@ -135,13 +139,25 @@ identify, and induces it precisely where it inflates --- which makes their diagn
 correction directly applicable to a setting where nobody thinks to look for illiquidity,
 because there is none.
 
+\textbf{Practitioner pitfall catalogues.} Closest in spirit to this paper are the practitioner
+catalogues of backtest sins: \citet{luo} on the ``seven sins'' of quantitative investing,
+\citet{ldp10} on why machine-learning funds fail, and \citet{fldp} on honest backtest
+reporting. Those catalogues name several of our classes in outline---look-ahead, survivorship-
+style drops, cost fantasy---at the level of research practice and process. What they do not
+contain is the accounting layer this paper supplies: measured distortion magnitudes from a live
+program, the conditionality of class~1, the attribution control of class~12, and enforcement as
+build-time code rather than checklist items. We position the twelve classes as the mechanized
+layer beneath those checklists, not as their replacement.
+
 \textbf{Leakage and reproducibility.} \citet{kn} document leakage as the dominant reproducibility
 failure in machine-learning-based science and propose model-info sheets; \citet{reforms}
-extends this to reporting standards. In finance specifically, recent work catalogues spurious
-predictability arising from data leakage and look-ahead in ML pipelines. Leakage is adjacent to
-our subject---both produce wrong numbers from clean intentions---but distinct: leakage is
-information crossing a boundary it should not; our classes are correct information placed at
-the wrong time, on the wrong instrument, or credited to the wrong cause.
+extends this to reporting standards. Leakage is adjacent to
+our subject---both produce wrong numbers from clean intentions---and the boundary is not
+perfectly clean: classes~8 and~10 are temporal leakage in \citet{kn}'s sense as well as
+accounting defects (look-ahead selection on the exit; the signal embedded in the fill), and we
+keep them in this taxonomy because the invariant that catches each is an accounting assertion
+rather than a pipeline audit. The remaining classes are distinct from leakage: correct
+information placed at the wrong time, on the wrong instrument, or credited to the wrong cause.
 
 \textbf{Costs and implementability.} A parallel literature shows that anomalies survive
 statistically and die economically: \citet{nvv} on transaction costs in the anomaly zoo,
@@ -175,6 +191,12 @@ the only go/no-go number); mark-to-market-daily marking padded to the full busin
 with zeros on inactive days; a coverage line reported with every result (rows in, rows out, per
 filter); pre-registered decision bars; and a test-count ledger.
 
+Statistical conventions for every figure quoted in this paper: Sharpe ratios are
+mean-over-standard-deviation of daily P\&L annualized by $\sqrt{252}$, computed on the
+full-calendar series; confidence intervals are fixed-block bootstrap percentile intervals
+\citep{kunsch} (2{,}000 draws, 21-trading-day blocks) unless stated otherwise; autocorrelations
+are lag-1 sample correlations of the stated series.
+
 We stress that none of the twelve classes is exotic. Each was found in code written by
 competent researchers who were reconciling their numbers. That is the point: reconciliation is
 a necessary check that is comprehensively insufficient.
@@ -183,13 +205,13 @@ a necessary check that is comprehensively insufficient.
 \footnotesize\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{clll}\toprule
 \# & Class & Measured distortion & Invariant \\ \midrule
-1 & Exit-day lumping & Sharpe $\times$2.2--2.4 (conditional; \S\ref{sec:lump}) & one mark per held day \\
+1 & Exit-day lumping & Sharpe $\times$2.17--2.42 (conditional; \S\ref{sec:lump}) & one mark per held day \\
 2 & Trajectory truncation & a ``12.6'' Sharpe, 100\% artifact & calendar-time exit location \\
 3 & Boundary drops & 24\% of trades, non-randomly & tape count $=$ entry-log count \\
 4 & Missing-leg deferral & 1.99 $\to$ 1.37; tail-day sign inverts & re-mark quote-less held days \\
 5 & Mid-fill fantasy & ``8.58'' $\to$ $-8.20$ at real quotes & three lines; decide on full cross \\
 6 & Active-day annualization & up to $\times$8 on sparse books & full-calendar padding \\
-7 & Sign bug & net exceeds gross & assert line 3 $\le$ Line 1 \\
+7 & Sign bug & net exceeds gross & assert Line 3 $\le$ Line 1 \\
 8 & Dropped/retried candidates & revoked a live deployment & force-close, never drop \\
 9 & Wrong-instrument lookup & P\&L sign flips (\S\ref{sec:short}) & exact-identity joins \\
 10 & Same-snapshot execution & manufactures edge from pure noise & next-quote fills \\
@@ -207,13 +229,16 @@ position was held and moving show zero.
 
 \textbf{What it cost us.} A skew strategy quoted at 1.91 (exit-day basis, \textsc{invalid})
 re-marked to 0.81; a premium sleeve 4.16 $\to$ 1.72; an aggregate book 4.78 $\to$
-$\approx$2.2. Inflation of $2.36\times$, $2.42\times$ and $2.17\times$ respectively---a
-2.2--2.4$\times$ band---with totals unchanged in every case.
+$\approx$2.2. Inflation of $2.36\times$, $2.42\times$ and $2.17\times$ respectively, with
+totals unchanged in every case.
 
 \textbf{The conditional result.} We simulate 120 overlapping ten-day trades on a 252-day
 calendar, with each trade's daily P\&L a convex combination
 $\rho \cdot (\text{common factor}) + (1-\rho) \cdot (\text{idiosyncratic})$, the common factor
-carrying five planted crash days. Figure~\ref{fig:lumping} shows the canonical case
+carrying five planted crash days. (Full specification, from the checked-in script: common
+factor $N(0.15, 1)$ daily with five crash days at $-12$; idiosyncratic $N(0.4, 1)$; unit
+sizing; entry days uniform on the calendar; both series live on the same 252-day calendar with
+zeros where nothing books; Sharpe as defined in \S3; median over 40 seeds per point.) Figure~\ref{fig:lumping} shows the canonical case
 ($\rho = 1$): identical cumulative totals, visibly different daily distributions---the exit-day
 series simply does not contain the crash days, because each crash was dispersed across the
 later exit dates of the trades that were open through it.
@@ -224,9 +249,12 @@ $\rho$ (weight on common shock) & 0.0 & 0.2 & 0.4 & 0.5 & 0.6 & 0.8 & 1.0 \\
 exit-day / MTM Sharpe ratio & 0.64 & 0.97 & 1.65 & 1.93 & 2.12 & 2.19 & 2.14 \\
 \bottomrule\end{tabular}\end{center}
 Under purely idiosyncratic P\&L, exit-day marking \emph{deflates} the Sharpe ratio; the
-inflation appears only as positions come to share shocks, saturating near 2.1--2.2$\times$---
-which brackets what we measured in production, on a book whose positions share a volatility
-factor almost completely.
+inflation appears only as positions come to share shocks, saturating near 2.1--2.2$\times$.
+That is the right order of magnitude for the $2.36\times$, $2.42\times$ and $2.17\times$
+measured in production---and slightly \emph{below} the two larger ones, which we state plainly:
+the simulation reproduces the mechanism, not the full production magnitude. Sizing dispersion,
+clustered entries and fatter-than-Gaussian shocks are all present in the production book and
+all absent from the simulation, and each pushes the ratio higher.
 
 \textbf{The mechanism is portfolio-level smoothing, and it leaves GLM's fingerprint.} At the
 level of a single trade, exit-day marking \emph{concentrates}: eleven days of P\&L collapse onto
@@ -234,8 +262,9 @@ one. At the level of the portfolio it \emph{smooths}, because a shock common to 
 positions is dispersed across their staggered exit dates. That is the same operation
 \citet{glm} model for illiquid holdings, and it leaves the same trace. In the simulation, the
 first-order autocorrelation of the exit-day series rises monotonically with commonality ---
-$+0.02$ at $\rho=0$, $+0.21$ at $\rho=0.5$, $+0.29$ at $\rho=1$ --- tracking the inflation
-almost exactly. The MTM-daily series moves the other way, from $+0.16$ at $\rho=0$ to $-0.03$
+$+0.02$ at $\rho=0$, $+0.21$ at $\rho=0.5$, $+0.29$ at $\rho=1$ --- rising as the inflation
+rises to its plateau (the plateau itself is flat within seed noise). The MTM-daily series
+moves the other way, from $+0.16$ at $\rho=0$ to $-0.03$
 at $\rho=1$.
 
 \textbf{That second series is the important one, and it disciplines the diagnostic.} A
@@ -267,13 +296,13 @@ enforcing coverage cannot alter reconciled dollars---only their timing.
 
 \begin{figure}[t]\centering
 \includegraphics[width=\textwidth]{fig_p1_lumping.pdf}
-\caption{Exhibit 1. Synthetic 120-trade book, fully common shocks. Left: cumulative P\&L is
+\caption{Synthetic 120-trade book, fully common shocks. Left: cumulative P\&L is
 identical by construction; the daily paths are not. Right: the exit-day series is missing the
 crash days entirely---they have been smeared across later exit dates.}
 \label{fig:lumping}\end{figure}
 \begin{figure}[t]\centering
 \includegraphics[width=0.68\textwidth]{fig_p1_commonality.pdf}
-\caption{Exhibit 2. The inflation is conditional on shock commonality. At $\rho=0$ exit-day
+\caption{The inflation is conditional on shock commonality. At $\rho=0$ exit-day
 marking deflates the Sharpe ratio (0.64$\times$); at $\rho=1$ it inflates it (2.14$\times$).
 Median over 40 seeds per point.}
 \label{fig:common}\end{figure}
@@ -307,10 +336,11 @@ line-1-minus-line 3 gap as the result's friction sensitivity.
 
 \textbf{Class 6, active-day annualization.} Computing the Sharpe ratio over active days only
 and annualizing by $\sqrt{252}$. Cost: up to 8$\times$ on sparse books; one $+15.97$
-(\textsc{invalid}). Invariant: pad to the full calendar with zeros.
+(\textsc{invalid}; full-calendar re-mark $+1.98$---the source of the 8$\times$). Invariant: pad
+to the full calendar with zeros.
 
 \textbf{Class 7, sign bug.} Net exceeding gross---the spread credited rather than paid---via
-sign conventions in multi-leg friction. Invariant: assert line 3 $\le$ Line 1 every run.
+sign conventions in multi-leg friction. Invariant: assert Line 3 $\le$ Line 1 every run.
 
 \textbf{Class 8, dropped or retried candidates.} Entries that never resolved in-window quietly
 discarded, or retried until they resolve favorably: look-ahead selection on the exit. Cost:
@@ -331,9 +361,9 @@ signal quote and exactly zero when filled at the next one. Invariant: next-quote
 strictly after signal time.
 
 \textbf{Class 11, calendar-indexed differencing.} Differencing on a calendar-date index deletes
-every Monday and post-holiday observation, or converts a ``48-hour'' hold into a two-trading-day
-hold spanning a weekend. Invariant: all differencing and holding periods on the trading-day
-grid.
+every Monday and post-holiday observation, or lets a hold specified as ``two days'' silently
+span a weekend---four calendar days of exposure booked as two. Invariant: all differencing and
+holding periods on the trading-day grid.
 
 \section{Class 12: attribution failure}\label{sec:attr}
 \textbf{Mechanism.} Dollars right, timing right, coverage right, fills honest---and the P\&L
@@ -353,9 +383,15 @@ lost roughly a third of the total.
 the delta hedge made it---i.e.\ the tape's P\&L was a hedge path, not an option-selection
 result.
 \item \textbf{Side-randomized control.} Re-running the identical entries with the side
-replaced: signal 0.34, random sides $-1.62$, \textbf{always-short 1.75} $[0.69, 3.32]$,
+replaced: signal 0.34, random sides mean $-1.57$ over 100 re-randomizations (SD 0.39, 95\%
+range $[-2.28, -0.84]$, every seed negative---quote the distribution, never one draw),
+\textbf{always-short 1.75} $[0.69, 3.32]$,
 always-long $-2.28$. The strategy's own structure, stripped of its signal, scored five times
-better than the signal.
+better than the signal. The single-arm intervals overlap---always-short
+$[0.69, 3.32]$ against the signal's $[-0.18, 0.90]$---so the decisive comparison is paired:
+on the identical calendar the daily difference (signal minus always-short) has Newey--West
+$t = -3.62$ and is negative in all seven calendar years. The signal is significantly
+\emph{worse} than its own structure.
 \end{itemize}
 The signal's genuine discrimination was approximately \$4.9 per trade against a short-side
 premium of roughly \$24 per trade: real, and roughly five-fold too small to matter. No
@@ -363,13 +399,22 @@ accounting audit could have reached this conclusion, because no accounting was w
 
 \textbf{Invariant (two-part).} (i) Decompose P\&L by leg and require the thesis leg to carry
 the result. (ii) Re-run the identical tape with randomized and constant sides; if a constant
-side beats the signal, there is no signal. Both are inexpensive---the second is a loop over the
+side beats the signal by more than the paired comparison's sampling error, the signal is not
+what carries the tape. Both are inexpensive---the second is a loop over the
 existing tape with one array replaced---and in our experience neither is standard practice.
+Two cautions bound the claim. The controls assume a roughly side-symmetric signal, and the leg
+split assumes a decomposition that reflects the thesis: for delta-hedged books the
+option-versus-hedge split is convention-dependent, and a genuine volatility signal can
+legitimately show hedge-leg profits in a trending year. Like the class-1 autocorrelation
+diagnostic, we therefore flag the pair's false-positive rate on correctly attributed
+strategies as unmeasured---a standard worth developing, not a validated instrument.
 
 \section{Two audits that passed and were still wrong}
 \textbf{Case A.} A competent pre-deployment leakage audit produced eight severity-ranked
-findings, correctly identified a real exit-fill leak worth $-1.41$ Sharpe, corrected the
-headline from 8.04 to 6.81 in-sample and 6.10 out-of-sample (that strategy's own basis, later
+findings, correctly identified a real exit-fill leak worth $-1.41$ Sharpe in isolation
+(8.04 $\to$ 6.63 on that strategy's all-sample basis), corrected the headline to 6.81
+all-sample and 6.10 out-of-sample once all fixes were combined---the entry-side fix added back
+$+0.30$---(that strategy's own basis, later
 \textsc{invalid} in full), and certified the strategy operational. It was subsequently
 invalidated entirely by classes 1 and 8. The audit was not incompetent; it was scoped to check
 the tape against itself, and both defects lived upstream of the tape it was given.
@@ -423,9 +468,12 @@ than asserting a property.
 
 \section{Limitations}
 This is a single-program catalogue: one asset class, one friction regime, one team's failure
-modes. The magnitudes---2.2--2.4$\times$, 8$\times$, the simulated 0.64-to-2.2 curve---are
+modes. The magnitudes---2.17--2.42$\times$, 8$\times$, the simulated 0.64-to-2.2 curve---are
 illustrations of mechanism, not population estimates, and the simulation's saturation point
-depends on parameters we chose to resemble our book. The invariant set is necessary, not
+depends on parameters we chose to resemble our book. The production magnitudes come from
+internal audits a reader cannot inspect; the synthetic reproductions are the checkable half of
+the paper, and every production figure should be read as labeled testimony that motivates an
+invariant, not as evidence that survives on its own. The invariant set is necessary, not
 sufficient: we make no claim that twelve is the complete list, and we would expect a
 cash-equity or futures program to contribute classes we have never seen. Class-12 detection by
 constant-side controls applies to side-symmetric signals; other exposures require other
@@ -461,6 +509,15 @@ cross-section of expected returns. \emph{Review of Financial Studies} 29(1).
 \emph{Review of Financial Studies} 33(5).
 \bibitem[Kapoor and Narayanan(2023)]{kn} Kapoor, S., Narayanan, A. (2023). Leakage and the
 reproducibility crisis in machine-learning-based science. \emph{Patterns} 4(9).
+\bibitem[K\"unsch(1989)]{kunsch} K\"unsch, H. (1989). The jackknife and the bootstrap for
+general stationary observations. \emph{Annals of Statistics} 17(3).
+\bibitem[L\'opez de Prado(2018)]{ldp10} L\'opez de Prado, M. (2018). The 10 reasons most
+machine learning funds fail. \emph{Journal of Portfolio Management} 44(6).
+\bibitem[Luo et al.(2014)]{luo} Luo, Y., Wang, S., Alvarez, M., Jussa, J., Wang, A., Rohal, G.
+(2014). Seven sins of quantitative investing. Deutsche Bank Markets Research white paper.
+\bibitem[Fabozzi and L\'opez de Prado(2018)]{fldp} Fabozzi, F., L\'opez de Prado, M. (2018).
+Being honest in backtest reporting: a template for disclosing multiple tests. \emph{Journal of
+Portfolio Management} 45(1).
 \bibitem[Kapoor et al.(2024)]{reforms} Kapoor, S., et al. (2024). REFORMS: consensus-based
 recommendations for machine-learning-based science. \emph{Science Advances} 10(18).
 \bibitem[Lo(2002)]{lo2002} Lo, A. (2002). The statistics of Sharpe ratios. \emph{Financial
