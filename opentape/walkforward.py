@@ -22,13 +22,17 @@ Prediction Could We Have Detected?" (P3); `required_ic` is the same computation.
 from __future__ import annotations
 
 import math
+from statistics import NormalDist
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
-from scipy.stats import norm
 
 EULER_GAMMA = 0.5772156649015329
+
+# Standard-normal inverse CDF from the stdlib (Wichura AS241) - agrees with
+# scipy.stats.norm.ppf to ~1e-15 and keeps scipy out of the dependency set.
+_STD_NORMAL = NormalDist()
 
 # Rank-residualised Spearman ICs have a Fisher standard error inflated over the
 # Pearson 1/sqrt(n-3); P3 uses this factor and so does this module.
@@ -130,8 +134,8 @@ def required_ic(n_eff: int, n_tests: int = 1, power: float = 0.80,
     if n_tests < 1:
         raise ValueError(f"n_tests must be at least 1, got {n_tests}")
     se = (SPEARMAN_SE_FACTOR if spearman else 1.0) / math.sqrt(n_eff - 3)
-    z_alpha = norm.ppf(1 - alpha / n_tests / 2)
-    z_power = norm.ppf(power)
+    z_alpha = _STD_NORMAL.inv_cdf(1 - alpha / n_tests / 2)
+    z_power = _STD_NORMAL.inv_cdf(power)
     return float(np.tanh((z_alpha + z_power) * se))
 
 
@@ -148,8 +152,8 @@ def expected_max_sharpe(n_trials: int, sharpe_std: float) -> float:
         raise ValueError(f"sharpe_std must be non-negative, got {sharpe_std}")
     if n_trials == 1:
         return 0.0
-    a = norm.ppf(1.0 - 1.0 / n_trials)
-    b = norm.ppf(1.0 - 1.0 / (n_trials * math.e))
+    a = _STD_NORMAL.inv_cdf(1.0 - 1.0 / n_trials)
+    b = _STD_NORMAL.inv_cdf(1.0 - 1.0 / (n_trials * math.e))
     return float(sharpe_std * ((1.0 - EULER_GAMMA) * a + EULER_GAMMA * b))
 
 
